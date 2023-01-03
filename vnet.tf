@@ -13,38 +13,62 @@ resource "azurerm_resource_group_template_deployment" "aztemplate" {
   })
   template_content = <<TEMPLATE
 {
-    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
         "vnetName": {
-            "type": "string",
-            "metadata": {
-                "description": "Name of the VNET"
-            }
+            
+            "type": "String",
         }
     },
     "variables": {},
     "resources": [
         {
             "type": "Microsoft.Network/virtualNetworks",
-            "apiVersion": "2020-05-01",
+            "apiVersion": "2022-05-01",
             "name": "[parameters('vnetName')]",
             "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), 'default')]"
+            ],
             "properties": {
                 "addressSpace": {
                     "addressPrefixes": [
-                        "10.0.0.0/16"
+                        "10.2.0.0/16"
                     ]
-                }
+                },
+                "subnets": [
+                    {
+                        "name": "default",
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_ansible_vnet_name'), 'default')]",
+                        "properties": {
+                            "addressPrefix": "10.2.0.0/24",
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Disabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled"
+                        },
+                        "type": "Microsoft.Network/virtualNetworks/subnets"
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2022-05-01",
+            "name": "[concat(parameters('virtualNetworks_ansible_vnet_name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_ansible_vnet_name'))]"
+            ],
+            "properties": {
+                "addressPrefix": "10.2.0.0/24",
+                "delegations": [],
+                "privateEndpointNetworkPolicies": "Disabled",
+                "privateLinkServiceNetworkPolicies": "Enabled"
             }
         }
-    ],
-    "outputs": {
-      "exampleOutput": {
-        "type": "string",
-        "value": "someoutput"
-      }
-    }
+    ]
 }
 TEMPLATE
 
@@ -52,8 +76,8 @@ TEMPLATE
   // sourcing this from a file for readability/editor support
 }
 
-output arm_example_output {
+/*output arm_example_output {
   value = jsondecode(azurerm_resource_group_template_deployment.aztemplate.output_content).exampleOutput.value
-}
+}*/
     
 
